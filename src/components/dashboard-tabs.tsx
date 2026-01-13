@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import axios from '@/lib/axios';
 import { ApiResponse } from '@/types/api';
 import { Comment, Post } from '@/types/models';
-import { Edit3, Eye, FileText, Mail, MessageSquare, Plus, Trash2, User as UserIcon, Users as UsersIcon, X } from 'lucide-react';
+import { Check, Edit3, Eye, FileText, Mail, MessageSquare, Plus, Trash2, User as UserIcon, Users as UsersIcon, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -32,6 +32,9 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
     const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
     const [viewingPost, setViewingPost] = useState<Post | null>(null);
     const [newComment, setNewComment] = useState('');
+    const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+    const [editingCommentContent, setEditingCommentContent] = useState('');
+    const [commentPagination, setCommentPagination] = useState({ page: 1, totalPages: 1, hasMore: false });
 
     const fetchPosts = async () => {
         setIsLoading(true);
@@ -47,12 +50,24 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
         }
     };
 
-    const fetchComments = async () => {
+    const fetchComments = async (postId?: string, page = 1, append = false) => {
         setIsLoading(true);
         try {
-            const response = await axios.get<ApiResponse<Comment[]>>('/api/comments');
+            const url = postId ? `/api/posts/${postId}/comments` : '/api/comments';
+            const response = await axios.get<ApiResponse<Comment[]>>(url, {
+                params: { page, limit: 10 }
+            });
             if (response.data.success) {
-                setComments(response.data.data);
+                if (append) {
+                    setComments(prev => [...prev, ...response.data.data]);
+                } else {
+                    setComments(response.data.data);
+                }
+                setCommentPagination({
+                    page: response.data.pagination?.page || 1,
+                    totalPages: response.data.pagination?.pages || 1,
+                    hasMore: (response.data.pagination?.page || 1) < (response.data.pagination?.pages || 1)
+                });
             }
         } catch (error: unknown) {
             // Non-API error
@@ -61,12 +76,23 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
         }
     };
 
+    const handleLoadMoreComments = () => {
+        if (viewingPost && commentPagination.hasMore) {
+            fetchComments(viewingPost.id, commentPagination.page + 1, true);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'posts') {
             fetchPosts();
-            fetchComments(); // Fetch comments to have them ready for post view
         }
     }, [activeTab]);
+
+    useEffect(() => {
+        if (viewingPost) {
+            fetchComments(viewingPost.id);
+        }
+    }, [viewingPost]);
 
     const handleDeletePost = (id: string) => {
         setPostToDelete(id);
@@ -103,9 +129,40 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
             const response = await axios.delete<ApiResponse<null>>(`/api/comments/${commentToDelete}`);
             if (response.data.success) {
                 toast.success(response.data.message || 'Comment deleted successfully');
-                fetchComments();
+                if (viewingPost) {
+                    fetchComments(viewingPost.id);
+                } else {
+                    fetchComments();
+                }
                 setIsDeleteCommentModalOpen(false);
                 setCommentToDelete(null);
+            }
+        } catch (error: unknown) {
+            // Non-API error
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleUpdateComment = (comment: Comment) => {
+        setEditingCommentId(comment.id);
+        setEditingCommentContent(comment.content);
+    };
+
+    const confirmUpdateComment = async (id: string) => {
+        if (!editingCommentContent.trim()) return;
+        setIsLoading(true);
+        try {
+            const response = await axios.put<ApiResponse<Comment>>(`/api/comments/${id}`, {
+                content: editingCommentContent
+            });
+            if (response.data.success) {
+                toast.success('Comment updated successfully');
+                setEditingCommentId(null);
+                setEditingCommentContent('');
+                if (viewingPost) {
+                    fetchComments(viewingPost.id);
+                }
             }
         } catch (error: unknown) {
             // Non-API error
@@ -120,14 +177,13 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
 
         setIsLoading(true);
         try {
-            const response = await axios.post<ApiResponse<Comment>>('/api/comments', {
-                content: newComment,
-                postId: viewingPost.id
+            const response = await axios.post<ApiResponse<Comment>>(`/api/posts/${viewingPost.id}/comments`, {
+                content: newComment
             });
             if (response.data.success) {
                 toast.success('Comment added successfully');
                 setNewComment('');
-                fetchComments();
+                fetchComments(viewingPost.id);
             }
         } catch (error: unknown) {
             // Non-API error
@@ -446,53 +502,119 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                                     Comments
                                 </h3>
 
-                                <form onSubmit={handleAddComment} className="mb-8">
-                                    <div className="flex gap-4">
-                                        <div className="flex-1">
-                                            <textarea
-                                                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all resize-none text-gray-700 min-h-[100px]"
-                                                placeholder="Write a comment..."
-                                                value={newComment}
-                                                onChange={(e) => setNewComment(e.target.value)}
-                                                required
-                                            />
+                                {permissions.includes('comments:create') && (
+                                    <form onSubmit={handleAddComment} className="mb-8">
+                                        <div className="flex gap-4">
+                                            <div className="flex-1">
+                                                <textarea
+                                                    className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all resize-none text-gray-700 min-h-[100px]"
+                                                    placeholder="Write a comment..."
+                                                    value={newComment}
+                                                    onChange={(e) => setNewComment(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                            <Button
+                                                type="submit"
+                                                isLoading={isLoading}
+                                                className="h-fit px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200"
+                                            >
+                                                Post
+                                            </Button>
                                         </div>
-                                        <Button
-                                            type="submit"
-                                            isLoading={isLoading}
-                                            className="h-fit px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200"
-                                        >
-                                            Post
-                                        </Button>
-                                    </div>
-                                </form>
+                                    </form>
+                                )}
 
                                 <div className="space-y-4">
-                                    {comments.filter(c => c.post.id === viewingPost.id).length > 0 ? (
-                                        comments.filter(c => c.post.id === viewingPost.id).map((comment) => (
-                                            <div key={comment.id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50 group">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <div className="flex items-center gap-2 mb-2">
+                                    {comments.length > 0 ? (
+                                        comments.map((comment) => (
+                                            <div key={comment.id} className="flex gap-4 p-4 rounded-2xl bg-gray-50/50 border border-gray-100 group transition-all hover:bg-white hover:shadow-sm">
+                                                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-600 font-bold text-sm flex-shrink-0">
+                                                    {comment.author.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <div className="flex items-center gap-2">
                                                             <span className="text-sm font-bold text-gray-900">{comment.author.name}</span>
-                                                            <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleDateString()}</span>
+                                                            <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
+                                                                {new Date(comment.createdAt).toLocaleDateString()}
+                                                            </span>
                                                         </div>
-                                                        <p className="text-sm text-gray-600">{comment.content}</p>
+                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            {editingCommentId === comment.id ? (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => confirmUpdateComment(comment.id)}
+                                                                        className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                                                                        title="Save"
+                                                                    >
+                                                                        <Check size={14} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingCommentId(null);
+                                                                            setEditingCommentContent('');
+                                                                        }}
+                                                                        className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-all"
+                                                                        title="Cancel"
+                                                                    >
+                                                                        <X size={14} />
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    {(permissions.includes('comments:manage:all') || (permissions.includes('comments:edit:own') && comment.author.email === userEmail)) && (
+                                                                        <button
+                                                                            onClick={() => handleUpdateComment(comment)}
+                                                                            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                                            title="Edit"
+                                                                        >
+                                                                            <Edit3 size={14} />
+                                                                        </button>
+                                                                    )}
+                                                                    {(permissions.includes('comments:manage:all') || (permissions.includes('comments:delete:own') && comment.author.email === userEmail)) && (
+                                                                        <button
+                                                                            onClick={() => handleDeleteComment(comment.id)}
+                                                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                                            title="Delete"
+                                                                        >
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    {(permissions.includes('comments:manage:all') || comment.author.email === userEmail) && (
-                                                        <button
-                                                            onClick={() => handleDeleteComment(comment.id)}
-                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                                            title="Delete Comment"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                    {editingCommentId === comment.id ? (
+                                                        <textarea
+                                                            className="w-full p-3 bg-white border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none text-sm text-gray-700 min-h-[80px]"
+                                                            value={editingCommentContent}
+                                                            onChange={(e) => setEditingCommentContent(e.target.value)}
+                                                            autoFocus
+                                                        />
+                                                    ) : (
+                                                        <p className="text-sm text-gray-600 leading-relaxed">{comment.content}</p>
                                                     )}
                                                 </div>
                                             </div>
                                         ))
                                     ) : (
-                                        <p className="text-center text-gray-400 italic py-8">No comments yet. Be the first to share your thoughts!</p>
+                                        <div className="text-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                                            <MessageSquare size={32} className="mx-auto text-gray-200 mb-3" />
+                                            <p className="text-gray-400 italic text-sm">No comments yet. Be the first to share your thoughts!</p>
+                                        </div>
+                                    )}
+                                    {commentPagination.hasMore && (
+                                        <div className="pt-4 flex justify-center">
+                                            <Button
+                                                variant="outline"
+                                                onClick={handleLoadMoreComments}
+                                                isLoading={isLoading}
+                                                className="px-8 rounded-xl border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-xs uppercase tracking-widest"
+                                            >
+                                                Load More Comments
+                                            </Button>
+                                        </div>
                                     )}
                                 </div>
                             </div>

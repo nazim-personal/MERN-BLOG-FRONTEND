@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3018/api';
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3018/api/v1';
 
     // Call Backend API
     const response = await axios.post(`${backendUrl}/auth/register`, { name, email, password });

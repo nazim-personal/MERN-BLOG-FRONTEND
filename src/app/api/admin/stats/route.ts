@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({ message: 'Unauthorized', success: false }, { status: 401 });
     }
 
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3018/api';
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3018/api/v1';
 
     // Fetch Users
     const usersResponse = await axios.get<ApiResponse<User[]>>(`${backendUrl}/auth/users`, {

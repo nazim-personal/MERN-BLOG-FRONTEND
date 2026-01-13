@@ -8,7 +8,7 @@ export async function POST() {
 
   try {
     if (refreshToken) {
-      const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3018/api';
+      const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3018/api/v1';
 
       // Call Backend Logout API
       await axios.post(`${backendUrl}/auth/logout`, {}, {

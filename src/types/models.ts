@@ -32,7 +32,7 @@ export interface Comment {
         name: string;
         email: string;
     };
-    post: {
+    post?: {
         id: string;
         title: string;
     };

@@ -5,7 +5,7 @@ import { getErrorMessage } from '@/lib/error-utils';
 import { ApiResponse } from '@/types/api';
 import { Comment } from '@/types/models';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3018/api';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3018/api/v1';
 
 export async function GET(request: Request) {
   try {
