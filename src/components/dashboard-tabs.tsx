@@ -26,6 +26,8 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
     const [editingPost, setEditingPost] = useState<Post | null>(null);
     const [postFormData, setPostFormData] = useState({ title: '', content: '', status: 'published', tags: [] as string[] });
     const [tagInput, setTagInput] = useState('');
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
     const fetchPosts = async () => {
         setIsLoading(true);
@@ -63,16 +65,26 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
         }
     }, [activeTab]);
 
-    const handleDeletePost = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this post?')) return;
+    const handleDeletePost = (id: string) => {
+        setPostToDelete(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeletePost = async () => {
+        if (!postToDelete) return;
+        setIsLoading(true);
         try {
-            const response = await axios.delete<ApiResponse<null>>(`/api/posts/${id}`);
+            const response = await axios.delete<ApiResponse<null>>(`/api/posts/${postToDelete}`);
             if (response.data.success) {
                 toast.success(response.data.message || 'Post deleted successfully');
                 fetchPosts();
+                setIsDeleteModalOpen(false);
+                setPostToDelete(null);
             }
         } catch (error: unknown) {
             // Non-API error
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -479,6 +491,41 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                                 </Button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {isDeleteModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                                <Trash2 size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Post?</h3>
+                            <p className="text-gray-500 mb-6">
+                                Are you sure you want to delete this post? This action cannot be undone.
+                            </p>
+                            <div className="flex justify-center gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsDeleteModalOpen(false)}
+                                    className="px-6 rounded-xl border-gray-200"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="button"
+                                    isLoading={isLoading}
+                                    onClick={confirmDeletePost}
+                                    className="px-6 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200"
+                                >
+                                    Delete
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

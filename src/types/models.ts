@@ -5,6 +5,7 @@ export interface User {
     role: string;
     permissions: string[];
     created_at: string;
+    deleted_at?: string;
 }
 
 export interface Post {
@@ -20,6 +21,7 @@ export interface Post {
     };
     created_at: string;
     updated_at: string;
+    deleted_at?: string;
 }
 
 export interface Comment {
@@ -36,6 +38,7 @@ export interface Comment {
     };
     created_at: string;
     updated_at: string;
+    deleted_at?: string;
 }
 
 export interface AdminStats {
