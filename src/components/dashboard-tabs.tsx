@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import axios from '@/lib/axios';
 import { ApiResponse } from '@/types/api';
 import { Comment, Post } from '@/types/models';
-import { Edit3, FileText, Mail, MessageSquare, Plus, Trash2, User as UserIcon, Users as UsersIcon, X } from 'lucide-react';
+import { Edit3, Eye, FileText, Mail, MessageSquare, Plus, Trash2, User as UserIcon, Users as UsersIcon, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -28,6 +28,10 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
     const [tagInput, setTagInput] = useState('');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [postToDelete, setPostToDelete] = useState<string | null>(null);
+    const [isDeleteCommentModalOpen, setIsDeleteCommentModalOpen] = useState(false);
+    const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
+    const [viewingPost, setViewingPost] = useState<Post | null>(null);
+    const [newComment, setNewComment] = useState('');
 
     const fetchPosts = async () => {
         setIsLoading(true);
@@ -60,8 +64,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
     useEffect(() => {
         if (activeTab === 'posts') {
             fetchPosts();
-        } else if (activeTab === 'comments') {
-            fetchComments();
+            fetchComments(); // Fetch comments to have them ready for post view
         }
     }, [activeTab]);
 
@@ -88,16 +91,48 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
         }
     };
 
-    const handleDeleteComment = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this comment?')) return;
+    const handleDeleteComment = (id: string) => {
+        setCommentToDelete(id);
+        setIsDeleteCommentModalOpen(true);
+    };
+
+    const confirmDeleteComment = async () => {
+        if (!commentToDelete) return;
+        setIsLoading(true);
         try {
-            const response = await axios.delete<ApiResponse<null>>(`/api/comments/${id}`);
+            const response = await axios.delete<ApiResponse<null>>(`/api/comments/${commentToDelete}`);
             if (response.data.success) {
                 toast.success(response.data.message || 'Comment deleted successfully');
+                fetchComments();
+                setIsDeleteCommentModalOpen(false);
+                setCommentToDelete(null);
+            }
+        } catch (error: unknown) {
+            // Non-API error
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleAddComment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!viewingPost || !newComment.trim()) return;
+
+        setIsLoading(true);
+        try {
+            const response = await axios.post<ApiResponse<Comment>>('/api/comments', {
+                content: newComment,
+                postId: viewingPost.id
+            });
+            if (response.data.success) {
+                toast.success('Comment added successfully');
+                setNewComment('');
                 fetchComments();
             }
         } catch (error: unknown) {
             // Non-API error
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -166,7 +201,6 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
             { id: 'profile', label: 'Profile', icon: UserIcon, permission: 'posts:view' }, // Everyone can see profile
             { id: 'posts', label: 'Posts', icon: FileText, permission: 'posts:view' },
             { id: 'users', label: 'Users', icon: UsersIcon, permission: 'users:view' },
-            { id: 'comments', label: 'Comments', icon: MessageSquare, permission: 'comments:manage:all' },
         ];
 
         return allTabs.filter(tab => permissions.includes(tab.permission) || tab.id === 'profile');
@@ -268,7 +302,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                                                         <UserIcon size={12} />
                                                         {post.author.name}
                                                     </span>
-                                                    <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                                                    <span>{new Date(post.createdAt).toLocaleDateString()}</span>
                                                     <span className={`px-2 py-0.5 rounded-full ${post.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                                         {post.status}
                                                     </span>
@@ -284,6 +318,13 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => setViewingPost(post)}
+                                                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                    title="View Post"
+                                                >
+                                                    <Eye size={18} />
+                                                </button>
                                                 {(permissions.includes('posts:manage:all') || (permissions.includes('posts:edit:own') && post.author.email === userEmail)) && (
                                                     <button
                                                         onClick={() => openEditModal(post)}
@@ -358,50 +399,107 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                         </div>
                     </div>
                 )}
-
-                {activeTab === 'comments' && (
-                    <div className="p-8">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Moderation</h2>
-                        {isLoading ? (
-                            <div className="flex justify-center py-12">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                            </div>
-                        ) : comments.length > 0 ? (
-                            <div className="space-y-4">
-                                {comments.map((comment) => (
-                                    <div key={comment.id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50 hover:bg-white hover:shadow-md transition-all group">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="text-sm font-bold text-gray-900">{comment.author.name}</span>
-                                                    <span className="text-xs text-gray-400">on</span>
-                                                    <span className="text-xs font-medium text-indigo-600">{comment.post.title}</span>
-                                                </div>
-                                                <p className="text-sm text-gray-600 italic">&quot;{comment.content}&quot;</p>
-                                                <p className="text-xs text-gray-400 mt-2">{new Date(comment.created_at).toLocaleDateString()}</p>
-                                            </div>
-                                            {permissions.includes('comments:manage:all') && (
-                                                <button
-                                                    onClick={() => handleDeleteComment(comment.id)}
-                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                                    title="Delete Comment"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="p-12 border border-dashed border-gray-200 rounded-2xl bg-gray-50 flex flex-col items-center justify-center text-gray-500">
-                                <MessageSquare size={48} className="text-gray-200 mb-4" />
-                                <p className="italic">All caught up! No pending comments to review.</p>
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
+
+            {/* View Post Modal */}
+            {viewingPost && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h3 className="text-xl font-bold text-gray-900">Post Details</h3>
+                            <button
+                                onClick={() => setViewingPost(null)}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <div className="mb-8">
+                                <h2 className="text-3xl font-bold text-gray-900 mb-4">{viewingPost.title}</h2>
+                                <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
+                                    <span className="flex items-center gap-1">
+                                        <UserIcon size={16} />
+                                        {viewingPost.author.name}
+                                    </span>
+                                    <span>{new Date(viewingPost.createdAt).toLocaleDateString()}</span>
+                                    {viewingPost.tags && viewingPost.tags.length > 0 && (
+                                        <div className="flex gap-1">
+                                            {viewingPost.tags.map((tag, index) => (
+                                                <span key={index} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-xs">
+                                                    #{tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="prose max-w-none text-gray-700">
+                                    {viewingPost.content}
+                                </div>
+                            </div>
+
+                            <hr className="border-gray-100 my-8" />
+
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                    <MessageSquare size={20} />
+                                    Comments
+                                </h3>
+
+                                <form onSubmit={handleAddComment} className="mb-8">
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <textarea
+                                                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all resize-none text-gray-700 min-h-[100px]"
+                                                placeholder="Write a comment..."
+                                                value={newComment}
+                                                onChange={(e) => setNewComment(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <Button
+                                            type="submit"
+                                            isLoading={isLoading}
+                                            className="h-fit px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200"
+                                        >
+                                            Post
+                                        </Button>
+                                    </div>
+                                </form>
+
+                                <div className="space-y-4">
+                                    {comments.filter(c => c.post.id === viewingPost.id).length > 0 ? (
+                                        comments.filter(c => c.post.id === viewingPost.id).map((comment) => (
+                                            <div key={comment.id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50 group">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className="text-sm font-bold text-gray-900">{comment.author.name}</span>
+                                                            <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <p className="text-sm text-gray-600">{comment.content}</p>
+                                                    </div>
+                                                    {(permissions.includes('comments:manage:all') || comment.author.email === userEmail) && (
+                                                        <button
+                                                            onClick={() => handleDeleteComment(comment.id)}
+                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                            title="Delete Comment"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-center text-gray-400 italic py-8">No comments yet. Be the first to share your thoughts!</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Post Modal */}
             {isModalOpen && (
@@ -495,7 +593,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                 </div>
             )}
 
-            {/* Delete Confirmation Modal */}
+            {/* Delete Post Confirmation Modal */}
             {isDeleteModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
@@ -529,6 +627,41 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                     </div>
                 </div>
             )}
-        </div>
+
+            {/* Delete Comment Confirmation Modal */}
+            {isDeleteCommentModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                                <Trash2 size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Comment?</h3>
+                            <p className="text-gray-500 mb-6">
+                                Are you sure you want to delete this comment? This action cannot be undone.
+                            </p>
+                            <div className="flex justify-center gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsDeleteCommentModalOpen(false)}
+                                    className="px-6 rounded-xl border-gray-200"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="button"
+                                    isLoading={isLoading}
+                                    onClick={confirmDeleteComment}
+                                    className="px-6 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200"
+                                >
+                                    Delete
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div >
     );
 }
