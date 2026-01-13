@@ -8,7 +8,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:30
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -18,7 +18,8 @@ export async function DELETE(
       return NextResponse.json({ message: 'Unauthorized', success: false }, { status: 401 });
     }
 
-    const response = await axios.delete<ApiResponse<null>>(`${BACKEND_URL}/comments/${params.id}`, {
+    const { id } = await params;
+    const response = await axios.delete<ApiResponse<null>>(`${BACKEND_URL}/comments/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 

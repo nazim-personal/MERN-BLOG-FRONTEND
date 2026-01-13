@@ -9,10 +9,11 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:30
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const response = await axios.get<ApiResponse<Post>>(`${BACKEND_URL}/posts/${params.id}`);
+    const { id } = await params;
+    const response = await axios.get<ApiResponse<Post>>(`${BACKEND_URL}/posts/${id}`);
     return NextResponse.json(response.data);
   } catch (error: unknown) {
     const message = getErrorMessage(error);
@@ -26,7 +27,7 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -36,8 +37,11 @@ export async function PUT(
       return NextResponse.json({ message: 'Unauthorized', success: false }, { status: 401 });
     }
 
+    const { id } = await params;
+    console.log('params id: ', id);
+
     const body = await request.json();
-    const response = await axios.put<ApiResponse<Post>>(`${BACKEND_URL}/posts/${params.id}`, body, {
+    const response = await axios.put<ApiResponse<Post>>(`${BACKEND_URL}/posts/${id}`, body, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -54,7 +58,7 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -64,7 +68,8 @@ export async function DELETE(
       return NextResponse.json({ message: 'Unauthorized', success: false }, { status: 401 });
     }
 
-    const response = await axios.delete<ApiResponse<null>>(`${BACKEND_URL}/posts/${params.id}`, {
+    const { id } = await params;
+    const response = await axios.delete<ApiResponse<null>>(`${BACKEND_URL}/posts/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 

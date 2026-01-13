@@ -25,6 +25,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPost, setEditingPost] = useState<Post | null>(null);
     const [postFormData, setPostFormData] = useState({ title: '', content: '', status: 'published', tags: [] as string[] });
+    const [tagInput, setTagInput] = useState('');
 
     const fetchPosts = async () => {
         setIsLoading(true);
@@ -93,7 +94,9 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
         setIsLoading(true);
         try {
             if (editingPost) {
-                const response = await axios.put<ApiResponse<Post>>(`/api/posts/${editingPost._id}`, postFormData);
+                console.log('editingPost: ', editingPost);
+
+                const response = await axios.put<ApiResponse<Post>>(`/api/posts/${editingPost.id}`, postFormData);
                 if (response.data.success) {
                     toast.success(response.data.message || 'Post updated successfully');
                     setIsModalOpen(false);
@@ -121,7 +124,29 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
     const openEditModal = (post: Post) => {
         setEditingPost(post);
         setPostFormData({ title: post.title, content: post.content, status: post.status, tags: post.tags || [] });
+        setTagInput('');
         setIsModalOpen(true);
+    };
+
+    const handleAddTag = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const tag = tagInput.trim();
+            if (tag && !postFormData.tags.includes(tag)) {
+                setPostFormData({
+                    ...postFormData,
+                    tags: [...postFormData.tags, tag]
+                });
+                setTagInput('');
+            }
+        }
+    };
+
+    const removeTag = (tagToRemove: string) => {
+        setPostFormData({
+            ...postFormData,
+            tags: postFormData.tags.filter(tag => tag !== tagToRemove)
+        });
     };
 
     const tabs = useMemo(() => {
@@ -147,7 +172,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center justify-center space-x-2 w-full py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === tab.id
                                 ? 'bg-indigo-600 text-white shadow-md'
-                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 cursor-pointer'
                                 }`}
                         >
                             <Icon size={18} />
@@ -203,6 +228,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                                     onClick={() => {
                                         setEditingPost(null);
                                         setPostFormData({ title: '', content: '', status: 'published', tags: [] });
+                                        setTagInput('');
                                         setIsModalOpen(true);
                                     }}
                                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all"
@@ -220,7 +246,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                         ) : posts.length > 0 ? (
                             <div className="grid grid-cols-1 gap-4">
                                 {posts.map((post) => (
-                                    <div key={post._id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50 hover:bg-white hover:shadow-md transition-all group">
+                                    <div key={post.id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50 hover:bg-white hover:shadow-md transition-all group">
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <h3 className="text-lg font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{post.title}</h3>
@@ -230,7 +256,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                                                         <UserIcon size={12} />
                                                         {post.author.name}
                                                     </span>
-                                                    <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                                                    <span>{new Date(post.created_at).toLocaleDateString()}</span>
                                                     <span className={`px-2 py-0.5 rounded-full ${post.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                                         {post.status}
                                                     </span>
@@ -257,7 +283,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                                                 )}
                                                 {(permissions.includes('posts:manage:all') || (permissions.includes('posts:delete:own') && post.author.email === userEmail)) && (
                                                     <button
-                                                        onClick={() => handleDeletePost(post._id)}
+                                                        onClick={() => handleDeletePost(post.id)}
                                                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                                                         title="Delete Post"
                                                     >
@@ -331,7 +357,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                         ) : comments.length > 0 ? (
                             <div className="space-y-4">
                                 {comments.map((comment) => (
-                                    <div key={comment._id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50 hover:bg-white hover:shadow-md transition-all group">
+                                    <div key={comment.id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50 hover:bg-white hover:shadow-md transition-all group">
                                         <div className="flex justify-between items-start">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-2">
@@ -340,11 +366,11 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                                                     <span className="text-xs font-medium text-indigo-600">{comment.post.title}</span>
                                                 </div>
                                                 <p className="text-sm text-gray-600 italic">&quot;{comment.content}&quot;</p>
-                                                <p className="text-xs text-gray-400 mt-2">{new Date(comment.createdAt).toLocaleDateString()}</p>
+                                                <p className="text-xs text-gray-400 mt-2">{new Date(comment.created_at).toLocaleDateString()}</p>
                                             </div>
                                             {permissions.includes('comments:manage:all') && (
                                                 <button
-                                                    onClick={() => handleDeleteComment(comment._id)}
+                                                    onClick={() => handleDeleteComment(comment.id)}
                                                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                                                     title="Delete Comment"
                                                 >
@@ -409,12 +435,31 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                                         <option value="published">Published</option>
                                     </select>
                                 </div>
-                                <Input
-                                    label="Tags (comma separated)"
-                                    placeholder="tech, news, lifestyle..."
-                                    value={postFormData.tags.join(', ')}
-                                    onChange={(e) => setPostFormData({ ...postFormData, tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag !== '') })}
-                                />
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-bold text-gray-700 ml-1">Tags</label>
+                                    <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-100 rounded-2xl focus-within:ring-2 focus-within:ring-indigo-500 focus-within:bg-white transition-all">
+                                        {postFormData.tags.map((tag, index) => (
+                                            <span key={index} className="flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium">
+                                                {tag}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeTag(tag)}
+                                                    className="hover:text-indigo-900 transition-colors"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </span>
+                                        ))}
+                                        <input
+                                            type="text"
+                                            className="flex-1 bg-transparent outline-none text-sm text-gray-700 min-w-[120px]"
+                                            placeholder={postFormData.tags.length === 0 ? "Type and press Enter to add tags..." : "Add tag..."}
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                            onKeyDown={handleAddTag}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                             <div className="flex justify-end gap-3 pt-4">
                                 <Button
