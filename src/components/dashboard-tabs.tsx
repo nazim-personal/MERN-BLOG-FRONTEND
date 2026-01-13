@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { User as UserIcon, Settings, Activity, Mail, Shield, Bell, FileText, Users as UsersIcon, MessageSquare, Plus, Trash2, Edit3, ExternalLink, X } from 'lucide-react';
-import axios from '@/lib/axios';
-import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Post, Comment } from '@/types/models';
+import axios from '@/lib/axios';
 import { ApiResponse } from '@/types/api';
+import { Comment, Post } from '@/types/models';
+import { Edit3, FileText, Mail, MessageSquare, Plus, Trash2, User as UserIcon, Users as UsersIcon, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 interface DashboardTabsProps {
     userName: string;
