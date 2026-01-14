@@ -106,27 +106,59 @@ export default function AdminDashboard() {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <StatCard
-                        title="Total Users"
-                        value={stats?.totalUsers || 0}
-                        icon={Users}
-                        color="bg-gradient-to-br from-blue-500 to-indigo-600"
-                        description="Registered accounts in the system"
-                    />
-                    <StatCard
-                        title="Total Posts"
-                        value={stats?.totalPosts || 0}
-                        icon={FileText}
-                        color="bg-gradient-to-br from-purple-500 to-pink-600"
-                        description="Published and draft blog articles"
-                    />
-                    <StatCard
-                        title="Total Comments"
-                        value={stats?.totalComments || 0}
-                        icon={MessageSquare}
-                        color="bg-gradient-to-br from-orange-400 to-red-500"
-                        description="User interactions on posts"
-                    />
+                    <div className="space-y-4">
+                        <StatCard
+                            title="Total Users"
+                            value={stats?.users.total || 0}
+                            icon={Users}
+                            color="bg-gradient-to-br from-blue-500 to-indigo-600"
+                            description="Registered accounts in the system"
+                        />
+                        {stats && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                    <p className="text-xs font-medium text-gray-500 uppercase">Admins</p>
+                                    <p className="text-xl font-bold text-gray-900">{stats.users.admins}</p>
+                                </div>
+                                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                    <p className="text-xs font-medium text-gray-500 uppercase">Regular</p>
+                                    <p className="text-xl font-bold text-gray-900">{stats.users.regularUsers}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-4">
+                        <StatCard
+                            title="Total Posts"
+                            value={stats?.posts.total || 0}
+                            icon={FileText}
+                            color="bg-gradient-to-br from-purple-500 to-pink-600"
+                            description="Published and draft blog articles"
+                        />
+                        {stats && (
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center">
+                                    <p className="text-[10px] font-medium text-gray-500 uppercase">Pub</p>
+                                    <p className="text-sm font-bold text-green-600">{stats.posts.published}</p>
+                                </div>
+                                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center">
+                                    <p className="text-[10px] font-medium text-gray-500 uppercase">Draft</p>
+                                    <p className="text-sm font-bold text-yellow-600">{stats.posts.draft}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-4">
+                        <StatCard
+                            title="Total Comments"
+                            value={stats?.comments.total || 0}
+                            icon={MessageSquare}
+                            color="bg-gradient-to-br from-orange-400 to-red-500"
+                            description="User interactions on posts"
+                        />
+                    </div>
                 </div>
 
                 {/* Quick Actions / Recent Activity Placeholder */}

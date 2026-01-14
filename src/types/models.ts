@@ -45,7 +45,17 @@ export interface Comment {
 }
 
 export interface AdminStats {
-    totalUsers: number;
-    totalPosts: number;
-    totalComments: number;
+    users: {
+        total: number;
+        admins: number;
+        regularUsers: number;
+    };
+    posts: {
+        total: number;
+        published: number;
+        draft: number;
+    };
+    comments: {
+        total: number;
+    };
 }
