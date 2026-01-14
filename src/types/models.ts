@@ -36,6 +36,9 @@ export interface Comment {
         id: string;
         title: string;
     };
+    parentId?: string;
+    replies?: Comment[];
+    replyCount?: number;
     createdAt: string;
     updatedAt: string;
     deletedAt?: string;
