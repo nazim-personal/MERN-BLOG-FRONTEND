@@ -4,7 +4,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getErrorMessage } from '@/lib/error-utils';
-import { validateEmail, validatePassword } from '@/lib/validation';
+import { validateEmail, validatePassword, validateName } from '@/lib/validation';
 import axios from '@/lib/axios';
 import { UserPlus } from 'lucide-react';
 import Link from 'next/link';
@@ -28,7 +28,8 @@ export default function SignUpPage() {
 
     const validate = () => {
         const newErrors: typeof errors = {};
-        if (!formData.name) newErrors.name = 'Name is required';
+        const nameError = validateName(formData.name);
+        if (nameError) newErrors.name = nameError;
 
         const emailError = validateEmail(formData.email);
         if (emailError) newErrors.email = emailError;
@@ -55,7 +56,7 @@ export default function SignUpPage() {
 
         try {
             // Call our Next.js API route
-            const response = await axios.post<ApiResponse<User>>('/api/auth/register', {
+            const response = await axios.post<ApiResponse<User>>('/auth/register', {
                 name: formData.name,
                 email: formData.email,
                 password: formData.password

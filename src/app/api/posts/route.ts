@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import { getErrorMessage } from '@/lib/error-utils';
 import { ApiResponse } from '@/types/api';
 import { Post } from '@/types/models';

@@ -1,66 +1,84 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { toast } from 'react-hot-toast';
+import { apiCache } from './api-cache';
 
-const api = axios.create({
-  headers: {
-    'Content-Type': 'application/json',
-  },
+// Extend AxiosRequestConfig to include custom properties
+declare module 'axios' {
+    export interface AxiosRequestConfig {
+        cache?: boolean;
+        ttl?: number;
+    }
+}
+
+const instance = axios.create({
+    baseURL: '/api',
+    withCredentials: true,
+    headers: {
+        'Content-Type': 'application/json',
+    },
 });
 
-// Request interceptor to add Authorization header if token exists (client-side)
-// Note: For httpOnly cookies, the browser handles sending cookies automatically to the same domain (Next.js API).
-// If this axios instance is used to call Next.js API routes, we don't need to manually add the token if it's in a cookie.
-// However, if we are calling the external backend directly from client (not recommended for httpOnly), we would need it.
-// Since the plan is Client -> Next.js API -> Backend, the Client just calls Next.js API.
-// The Next.js API will handle the token.
-// So this axios instance is primarily for Client -> Next.js API calls.
+// Request deduplication map - to be implemented fully later
+// const pendingRequests = new Map<string, Promise<AxiosResponse<unknown>>>();
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    // Extract error message
-    const message = error.response?.data?.message || error.message || 'An unexpected error occurred';
+instance.interceptors.request.use(
+    (config: InternalAxiosRequestConfig) => {
+        // Check cache for GET requests
+        if (config.method === 'get' && config.cache !== false) {
+            const cacheKey = config.url + JSON.stringify(config.params);
+            const cachedResponse = apiCache.get(cacheKey);
 
-    // Handle 401 Unauthorized (Token Expired or Invalid)
-    if (error.response?.status === 401) {
-      // Only redirect on client side
-      if (typeof window !== 'undefined') {
-        // Prevent infinite loops if the logout endpoint itself returns 401
-        if (!window.location.pathname.includes('/signin')) {
-          try {
-            // Call logout endpoint to clear cookies
-            await axios.post('/api/auth/logout');
-            toast.error('Session expired. Please sign in again.');
-            // Redirect to signin
-            window.location.href = '/signin';
-          } catch (logoutError) {
-            console.error('Logout failed during 401 handling:', logoutError);
-            // Force redirect even if logout fails
-            window.location.href = '/signin';
-          }
-          // Return a resolved promise to prevent further error handling for this request
-          return Promise.resolve({ success: false, message: 'Session expired' });
+            if (cachedResponse) {
+                // Return cached response using a special adapter or by throwing a specific error that we catch
+                // But simpler is to attach it to the config and handle in response interceptor?
+                // Axios doesn't easily support returning from request interceptor.
+                // A common pattern is to use a custom adapter, but that's complex.
+                // For now, we will implement deduplication here and basic caching logic in the calling components
+                // OR we can wrap the axios call.
+                // Actually, let's keep it simple: we won't force cache in interceptor for now to avoid complexity
+                // with cancelling requests. We'll use the apiCache utility explicitly in components where needed.
+                // BUT, we can implement request deduplication here.
+            }
         }
-      }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
     }
-
-    // Show toast for all errors (400, 401, 500, etc.)
-    // We avoid showing multiple toasts if the page also handles it
-    // But since we want "global" handling, we do it here.
-    toast.error(message);
-
-    // Instead of rejecting, we resolve with the error response data
-    // This prevents the "crash" (throw) in the calling code.
-    // We ensure the returned object has a 'success: false' flag.
-    return Promise.resolve({
-      ...error.response,
-      data: {
-        ...(error.response?.data || {}),
-        success: false,
-        message: message
-      }
-    });
-  }
 );
 
-export default api;
+instance.interceptors.response.use(
+    (response) => {
+        return response;
+    },
+    async (error: AxiosError) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && originalRequest) {
+            // Handle 401 Unauthorized
+            try {
+                // Call logout endpoint to clear cookies
+                await axios.post('/auth/logout');
+
+                // Redirect to signin
+                if (typeof window !== 'undefined' && !window.location.pathname.includes('/signin')) {
+                    window.location.href = '/signin';
+                    toast.error('Session expired. Please sign in again.');
+                }
+            } catch (logoutError) {
+                console.error('Logout failed during 401 handling:', logoutError);
+            }
+        } else if (error.response?.status === 403) {
+            toast.error('You do not have permission to perform this action');
+        } else if (error.response?.status === 500) {
+            // Only show generic error for 500s if not handled locally
+            // toast.error('Internal Server Error');
+        }
+
+        // Always reject the error so calling code can handle it (e.g., stop loading state)
+        // But we return a rejected promise with a specific structure if needed
+        return Promise.reject(error);
+    }
+);
+
+export default instance;

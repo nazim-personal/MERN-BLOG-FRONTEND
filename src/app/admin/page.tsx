@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Users, FileText, MessageSquare, ArrowLeft, RefreshCw, AlertCircle, LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import axios from '@/lib/axios';
-import { toast } from 'react-hot-toast';
 
 import { ApiResponse } from '@/types/api';
 import { AdminStats } from '@/types/models';
@@ -18,13 +17,13 @@ export default function AdminDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get<ApiResponse<AdminStats>>('/api/admin/stats');
+            const response = await axios.get<ApiResponse<AdminStats>>('/admin/stats');
             if (response.data.success) {
                 setStats(response.data.data);
             } else {
                 setError(response.data.message || 'Failed to fetch stats');
             }
-        } catch (err: unknown) {
+        } catch {
             // This now only catches non-API errors
             setError('An unexpected error occurred');
         } finally {

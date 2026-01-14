@@ -3,16 +3,6 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { Spinner } from './spinner';
 
-// Note: I am not installing class-variance-authority or radix-ui/react-slot yet.
-// I should probably stick to simple props if I don't want to install more dependencies,
-// OR I should install them. The user asked for "Clean, modern UI".
-// I will use simple props for now to avoid extra deps unless necessary, but `cn` utility is needed.
-// Wait, I haven't created `lib/utils.ts` yet. I need to create that too.
-
-// Let's create a simpler button without cva/radix for now to keep it lightweight unless I install them.
-// Actually, I'll install `clsx` and `tailwind-merge` (already installed).
-// I will create `lib/utils.ts` first.
-
 export interface ButtonProps
     extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     isLoading?: boolean;

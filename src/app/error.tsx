@@ -27,9 +27,7 @@ export default function Error({
 
                 <div className="space-y-2">
                     <h2 className="text-2xl font-bold text-gray-900">Something went wrong!</h2>
-                    <p className="text-gray-500">
-                        An unexpected error occurred. We've logged the issue and are looking into it.
-                    </p>
+                    An unexpected error occurred. We&apos;ve logged the issue and are looking into it.
                 </div>
 
                 <div className="flex flex-col gap-3">

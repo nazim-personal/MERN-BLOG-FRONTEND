@@ -49,7 +49,7 @@ export default function SignInPage() {
 
         try {
             // Call our Next.js API route
-            const response = await axios.post<ApiResponse<{ user: User; accessToken: string }>>('/api/auth/signin', formData);
+            const response = await axios.post<ApiResponse<{ user: User; accessToken: string }>>('/auth/signin', formData);
 
             if (response.data.success) {
                 toast.success(response.data.message || 'Welcome back!', { id: loadingToast });

@@ -38,7 +38,6 @@ export async function PUT(
     }
 
     const { id } = await params;
-    console.log('params id: ', id);
 
     const body = await request.json();
     const response = await axios.put<ApiResponse<Post>>(`${BACKEND_URL}/posts/${id}`, body, {

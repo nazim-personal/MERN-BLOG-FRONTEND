@@ -15,7 +15,6 @@ function AuthCallbackContent() {
             const accessToken = searchParams.get('accessToken');
             const refreshToken = searchParams.get('refreshToken');
             const error = searchParams.get('error');
-            console.log('Callback params:', { accessToken, refreshToken, error });
 
             if (error) {
                 console.error('Social login error param:', error);
@@ -26,12 +25,10 @@ function AuthCallbackContent() {
 
             if (accessToken && refreshToken) {
                 try {
-                    console.log('Setting cookies...');
-                    await axios.post('/api/auth/social-login-success', {
+                    await axios.post('/auth/social-login-success', {
                         accessToken,
                         refreshToken
                     });
-                    console.log('Cookies set, redirecting to dashboard...');
 
                     toast.success('Successfully signed in!');
                     router.push('/dashboard');

@@ -38,7 +38,7 @@ export async function GET() {
       // Fallback to 0 if endpoint doesn't exist
     }
 
-    const totalUsers = usersResponse.data.data?.length || 0;
+    const totalUsers = usersResponse.data.pagination?.total || usersResponse.data.data?.length || 0;
     const totalPosts = postsResponse.data.pagination?.total || postsResponse.data.data?.length || 0;
 
     const stats: AdminStats = {

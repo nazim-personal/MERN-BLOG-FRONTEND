@@ -1,5 +1,5 @@
 {
-  "name": "custom-modules-ui",
+  "name": "mern-blog-ui",
   "version": "0.1.0",
   "private": true,
   "scripts": {

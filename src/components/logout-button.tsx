@@ -10,7 +10,7 @@ export function LogoutButton() {
 
     const handleLogout = async () => {
         try {
-            await axios.post('/api/auth/logout');
+            await axios.post('/auth/logout');
             toast.success('Logged out successfully');
             router.push('/signin');
             router.refresh();
