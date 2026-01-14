@@ -299,11 +299,22 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
             });
             if (response.data.success) {
                 toast.success(parentId ? 'Reply added successfully' : 'Comment added successfully');
+
+                const newCommentData = response.data.data;
+                // Ensure author info is present for the UI
+                if (!newCommentData.author || !newCommentData.author.name) {
+                    newCommentData.author = {
+                        ...newCommentData.author,
+                        name: userName,
+                        email: userEmail
+                    };
+                }
+
                 if (parentId) {
                     setReplyContent('');
                     setReplyingToId(null);
                     // Add reply to state locally
-                    addReplyToState(parentId, response.data.data);
+                    addReplyToState(parentId, newCommentData);
                     // Expand the parent comment to show the new reply
                     const newExpanded = new Set(expandedComments);
                     newExpanded.add(parentId);
@@ -311,7 +322,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                 } else {
                     setNewComment('');
                     // For top-level comments, we can just prepend to the list
-                    setComments(prev => [response.data.data, ...prev]);
+                    setComments(prev => [newCommentData, ...prev]);
                 }
             }
         } catch (error: unknown) {
@@ -660,12 +671,12 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                                             <div key={comment.id} className={`${depth > 0 ? 'ml-12 mt-4' : ''}`}>
                                                 <div className="flex gap-4 p-4 rounded-2xl bg-gray-50/50 border border-gray-100 group transition-all hover:bg-white hover:shadow-sm">
                                                     <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-600 font-bold text-sm flex-shrink-0">
-                                                        {comment.author.name.charAt(0).toUpperCase()}
+                                                        {comment.author?.name?.charAt(0).toUpperCase() || '?'}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex justify-between items-start mb-1">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-sm font-bold text-gray-900">{comment.author.name}</span>
+                                                                <span className="text-sm font-bold text-gray-900">{comment.author?.name || 'Unknown User'}</span>
                                                                 <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
                                                                     {new Date(comment.createdAt).toLocaleDateString()}
                                                                 </span>
