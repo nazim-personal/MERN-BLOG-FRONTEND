@@ -133,11 +133,7 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
             const response = await axios.delete<ApiResponse<null>>(`/api/comments/${commentToDelete}`);
             if (response.data.success) {
                 toast.success(response.data.message || 'Comment deleted successfully');
-                if (viewingPost) {
-                    fetchComments(viewingPost.id);
-                } else {
-                    fetchComments();
-                }
+                removeCommentFromState(commentToDelete);
                 setIsDeleteCommentModalOpen(false);
                 setCommentToDelete(null);
             }
@@ -162,11 +158,9 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
             });
             if (response.data.success) {
                 toast.success('Comment updated successfully');
+                updateCommentInState(id, { content: editingCommentContent });
                 setEditingCommentId(null);
                 setEditingCommentContent('');
-                if (viewingPost) {
-                    fetchComments(viewingPost.id);
-                }
             }
         } catch (error: unknown) {
             // Non-API error
@@ -308,14 +302,17 @@ export function DashboardTabs({ userName, userEmail, permissions }: DashboardTab
                 if (parentId) {
                     setReplyContent('');
                     setReplyingToId(null);
+                    // Add reply to state locally
+                    addReplyToState(parentId, response.data.data);
                     // Expand the parent comment to show the new reply
                     const newExpanded = new Set(expandedComments);
                     newExpanded.add(parentId);
                     setExpandedComments(newExpanded);
                 } else {
                     setNewComment('');
+                    // For top-level comments, we can just prepend to the list
+                    setComments(prev => [response.data.data, ...prev]);
                 }
-                fetchComments(viewingPost.id);
             }
         } catch (error: unknown) {
             // Non-API error
